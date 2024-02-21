@@ -1,0 +1,2 @@
+PyPDF2==3.0.1
+Send2Trash==1.8.2
