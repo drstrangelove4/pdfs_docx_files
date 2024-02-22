@@ -21,6 +21,8 @@ DELETE_OPTION = "yes"
 DELETE_OPTION_2 = "y"
 READ_MODE = "rb"
 SAVE_MODE = "wb"
+ENCRYPT_OPTION = "yes"
+DELETE_FUNCTION_OPTION = 1
 
 
 # ------------------------------------------------------------------------------------------------------------------------
@@ -30,6 +32,7 @@ def get_pdf_paths(root_path, find_type, new_suffix, split_value):
     """
     A function that takes no inputs and returns two lists of strings.
     The first is the file path and the second file names without the extension
+
     """
     pdf_paths = []
     pdf_new_paths = []
@@ -53,7 +56,9 @@ def get_pdf_paths(root_path, find_type, new_suffix, split_value):
 # ------------------------------------------------------------------------------------------------------------------------
 
 
-def encrypt_pdfs(list_of_paths, list_of_new_paths, read_mode, save_mode):
+def create_pdfs(
+    list_of_paths, list_of_new_paths, read_mode, save_mode, encrypt_option, password
+):
     """
     Takes an input of 2 lists of file paths. The first being current file paths, the second being file paths after the function
     has encrypted the file.
@@ -61,20 +66,25 @@ def encrypt_pdfs(list_of_paths, list_of_new_paths, read_mode, save_mode):
     for x in range(len(list_of_paths)):
         try:
             # Open each file in the path and create creater/writer objects
-            pdf_to_encrypt = open(list_of_paths[x], read_mode)
-            encrypt_reader = PyPDF2.PdfReader(pdf_to_encrypt)
-            encrypt_writer = PyPDF2.PdfWriter()
+            working_pdf = open(list_of_paths[x], read_mode)
+            reader = PyPDF2.PdfReader(working_pdf)
+
+            # If the file is encrypted, attempt to decrypt it. Note this only works if all files are encrypted with the same password.
+            if encrypt_option != "yes":
+                reader.decrypt(password)
+            writer = PyPDF2.PdfWriter()
 
             # Write each page in the file to the writer object.
-            for i in range(len(encrypt_reader.pages)):
-                encrypt_writer.add_page(encrypt_reader.pages[i])
+            for i in range(len(reader.pages)):
+                writer.add_page(reader.pages[i])
 
             # Encrypt the writer object to the password value in the constant above.
-            encrypt_writer.encrypt(PASSWORD)
+            if encrypt_option == "yes":
+                writer.encrypt(password)
 
             # The next 2 lines are responsible for encrypting files, comment them out to disable encrypting files.
-            encrypted_pdf = open(list_of_new_paths[x], save_mode)
-            encrypt_writer.write(encrypted_pdf)
+            new_pdf = open(list_of_new_paths[x], save_mode)
+            writer.write(new_pdf)
             print(f"File saved to: {list_of_new_paths[x]}")
 
         except Exception as e:
@@ -84,16 +94,21 @@ def encrypt_pdfs(list_of_paths, list_of_new_paths, read_mode, save_mode):
 # ------------------------------------------------------------------------------------------------------------------------
 
 
-def delete_unencrypted_files(list_of_paths, pdf_suffix):
+def delete_pdfs(list_of_paths, pdf_suffix, option):
     """
     Takes an input of a list of file paths. Deletes all files in that list.
     """
     for pdf in list_of_paths:
-        if pdf_suffix not in pdf:
-            # Required to stop removal of encrypted pdfs after re-running program.
-            # Comment out next line to prevent program sending files to trash when this function runs.
-            send2trash(pdf)
-            print(f"File at: {pdf} has been sent to trash.")
+        if option == 1:
+            if pdf_suffix not in pdf:
+                # Comment out next line to prevent program sending files to trash when this function runs.
+                send2trash(pdf)
+        else:
+            if pdf_suffix in pdf:
+                # Comment out next line to prevent program sending files to trash when this function runs.
+                send2trash(pdf)
+
+        print(f"File at: {pdf} has been sent to trash.")
 
     print("\nAll unencrypted pdf files have been removed.")
 
@@ -107,15 +122,20 @@ def main():
     """
     # Call function to fill variables with paths
     pdf_path_list, new_paths = get_pdf_paths(
-        root_path=ROOT_PATH, find_type=FIND_TYPE, new_suffix=PDF_SUFFIX, split_value=SPLIT_VALUE
+        root_path=ROOT_PATH,
+        find_type=FIND_TYPE,
+        new_suffix=PDF_SUFFIX,
+        split_value=SPLIT_VALUE,
     )
 
     # Encrypt the pdfs in path.
-    encrypt_pdfs(
+    create_pdfs(
         list_of_paths=pdf_path_list,
         list_of_new_paths=new_paths,
         read_mode=READ_MODE,
         save_mode=SAVE_MODE,
+        encrypt_option=ENCRYPT_OPTION,
+        password=PASSWORD,
     )
 
     if pdf_path_list:
@@ -129,8 +149,14 @@ def main():
         choice = input(
             "\nPress 'yes/y'to delete all, default option = keep files: "
         ).lower()
+
+        # Based upon user choice, run the delete function.
         if choice == DELETE_OPTION or choice == DELETE_OPTION_2:
-            delete_unencrypted_files(list_of_paths=pdf_path_list, pdf_suffix=PDF_SUFFIX)
+            delete_pdfs(
+                list_of_paths=pdf_path_list,
+                pdf_suffix=PDF_SUFFIX,
+                option=DELETE_FUNCTION_OPTION,
+            )
         else:
             print("Files have not been deleted")
     else:
