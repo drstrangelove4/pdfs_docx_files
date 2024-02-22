@@ -1,3 +1,9 @@
+"""
+Title: Project 3 Word Invites - Automate the Boring Stuff
+Purpose: Takes a path to a textfile, creates a list from each line and sends an 'invite' to each line (text file should contain lines)
+Author: drstrangelove4
+"""
+
 import docx
 
 PATH = "guests.txt"
